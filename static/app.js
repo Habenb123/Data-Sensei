@@ -97,6 +97,17 @@ async function loadSampleData() {
   }
 }
 
+async function resetDataset() {
+  try {
+    const res = await fetch("/api/reset-dataset", { method: "POST" });
+    currentDataset = null;
+    showEmptyDatasetState();
+    alert("Dataset cleared. You can now upload a fresh file.");
+  } catch (err) {
+    alert("Reset failed: " + err.message);
+  }
+}
+
 async function loadInitialDataset() {
   try {
     const res = await fetch("/api/dataset-info");
@@ -104,10 +115,39 @@ async function loadInitialDataset() {
     if (data.loaded) {
       onDatasetLoaded(data);
     } else {
-      // Auto-load sample for instantaneous workspace experience
-      await loadSampleData();
+      showEmptyDatasetState();
     }
-  } catch (e) {}
+  } catch (e) {
+    showEmptyDatasetState();
+  }
+}
+
+function showEmptyDatasetState() {
+  document.getElementById("sidebarDatasetName").textContent = "No dataset loaded";
+  document.getElementById("sidebarDatasetStats").textContent = "Upload a CSV or Excel file";
+
+  const emptyHtml = `
+    <div class="workspace-card p-10 text-center border-dashed border-2 border-slate-300 bg-white">
+      <div class="w-16 h-16 rounded-2xl bg-coral-50 border border-coral-200 flex items-center justify-center mx-auto mb-4 text-coral-600">
+        <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/></svg>
+      </div>
+      <h3 class="font-syne font-bold text-xl text-slate-900 mb-1">Upload a Dataset to Begin</h3>
+      <p class="text-sm text-slate-500 max-w-md mx-auto mb-6">Drop your CSV, Excel, or Parquet file here for in-depth DuckDB analytics and Sense AI guidance.</p>
+      <div class="flex justify-center gap-3">
+        <button onclick="document.getElementById('topFileInput').click()" class="coral-gradient text-white text-xs font-bold px-5 py-2.5 rounded-xl shadow hover:opacity-95 transition">
+          📂 Browse File
+        </button>
+        <button onclick="loadSampleData()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold px-5 py-2.5 rounded-xl transition border border-slate-200">
+          ⚡ Or Load Sample Sales Data
+        </button>
+      </div>
+    </div>
+  `;
+
+  const kpisGrid = document.getElementById("dashboardKpisGrid");
+  if (kpisGrid) {
+    kpisGrid.innerHTML = `<div class="col-span-1 sm:col-span-2 lg:col-span-4">${emptyHtml}</div>`;
+  }
 }
 
 function onDatasetLoaded(data) {

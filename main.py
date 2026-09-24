@@ -116,6 +116,13 @@ async def load_sample():
     return await get_dataset_info()
 
 
+@app.post("/api/reset-dataset")
+async def reset_dataset():
+    global db_manager
+    db_manager = DuckDBManager(table_name="dataset")
+    return {"loaded": False, "message": "Dataset reset successfully."}
+
+
 @app.get("/api/dashboard-kpis")
 async def get_dashboard_kpis():
     if not db_manager.loaded:
@@ -300,5 +307,6 @@ async def generate_executive_report(req: ReportRequest):
 
 if __name__ == "__main__":
     import uvicorn
-    print("🚀 Launching DataPilot Workspace on http://localhost:8000 ...")
-    uvicorn.run("main:app", host="127.0.0.1", port=8000, reload=True)
+    port = int(os.environ.get("PORT", 8000))
+    print(f"🚀 Launching DataSensei Workspace on port {port} ...")
+    uvicorn.run("main:app", host="0.0.0.0", port=port, reload=False)
