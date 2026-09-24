@@ -380,7 +380,16 @@ class LightweightDataCrew:
         # STEP 3: Quantitative Analyst & Report Agent (Structured Findings)
         # -------------------------------------------------------------
         t0 = time.perf_counter()
-        result_table_md = df_result.to_markdown(index=False) if df_result is not None and not df_result.empty else "0 rows returned."
+        if df_result is not None and not df_result.empty:
+            sample_df = df_result.head(25)
+            cols_str = [str(c) for c in sample_df.columns]
+            header = "| " + " | ".join(cols_str) + " |"
+            divider = "| " + " | ".join(["---"] * len(cols_str)) + " |"
+            rows_str = ["| " + " | ".join([str(val) if val is not None else "-" for val in row]) + " |" for row in sample_df.values]
+            result_table_md = "\n".join([header, divider] + rows_str)
+        else:
+            result_table_md = "0 rows returned."
+
         cols = list(df_result.columns) if df_result is not None else []
 
         analyst_system = (
