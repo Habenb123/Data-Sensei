@@ -360,9 +360,19 @@ async function runCopilotQuery() {
   setTimeout(() => p3.className = "bg-coral-100 border border-coral-400 text-coral-800 p-2 rounded-lg font-bold animate-pulse", 1200);
   setTimeout(() => p4.className = "bg-coral-100 border border-coral-400 text-coral-800 p-2 rounded-lg font-bold animate-pulse", 1800);
 
-  const provider = localStorage.getItem("datapilot_provider") || "Ollama (Local)";
-  const model_name = localStorage.getItem("datapilot_model") || "qwen2.5-coder:14b";
-  const api_key = localStorage.getItem("datapilot_apikey") || "";
+  const provider = localStorage.getItem("datapilot_provider") || document.getElementById("copilotProviderQuickSelect")?.value || "Google Gemini";
+  const model_name = localStorage.getItem("datapilot_model") || document.getElementById("copilotModelQuickInput")?.value || "gemini-1.5-flash";
+  const api_key = (localStorage.getItem("datapilot_apikey") || document.getElementById("copilotApiKeyQuickInput")?.value || "").trim();
+
+  if ((provider === "Google Gemini" || provider === "OpenAI" || provider === "Groq") && !api_key) {
+    clearInterval(timer);
+    submitBtn.disabled = false;
+    submitText.textContent = "RUN";
+    stepTracker.classList.add("hidden");
+    alert(`🔑 ${provider} API Key Required!\nPlease paste your API key into the ENGINE bar above or in Settings.`);
+    document.getElementById("copilotApiKeyQuickInput")?.focus();
+    return;
+  }
 
   try {
     const res = await fetch("/api/analyze", {
@@ -427,6 +437,47 @@ function appendAnalysisCard(data) {
     </div>
   `).join("");
 
+  const isMultiRow = data.rows && data.rows.length > 1;
+  const isSingleScalar = data.rows && data.rows.length === 1 && data.columns && data.columns.length === 1;
+
+  let visualSectionHtml = "";
+  if (isMultiRow && data.chart) {
+    visualSectionHtml = `
+      <!-- 3. Interactive Visualization Card -->
+      <div class="bg-slate-50/80 p-5 rounded-xl border border-slate-200">
+        <div class="flex items-center justify-between mb-3">
+          <div>
+            <div class="font-syne font-bold text-sm text-slate-900">${data.chart?.title || 'Data Analytics'}</div>
+            <div class="text-xs text-slate-500 font-mono">${data.chart?.subtitle || 'Grounded in executed SQL calculations'}</div>
+          </div>
+          <div class="flex items-center space-x-1.5">
+            <button onclick="switchChartType('${cardId}', 'bar')" class="text-xs font-mono px-2.5 py-1 bg-white border border-slate-200 rounded-lg hover:border-coral-500">Bar</button>
+            <button onclick="switchChartType('${cardId}', 'line')" class="text-xs font-mono px-2.5 py-1 bg-white border border-slate-200 rounded-lg hover:border-coral-500">Line</button>
+            <button onclick="switchChartType('${cardId}', 'doughnut')" class="text-xs font-mono px-2.5 py-1 bg-white border border-slate-200 rounded-lg hover:border-coral-500">Donut</button>
+          </div>
+        </div>
+        <div class="h-64 flex items-center justify-center">
+          <canvas id="chart_${cardId}"></canvas>
+        </div>
+      </div>
+    `;
+  } else if (isSingleScalar) {
+    const rawVal = data.rows[0][data.columns[0]];
+    const formattedVal = (typeof rawVal === 'number' ? rawVal.toLocaleString() : (rawVal !== null ? rawVal : '-'));
+    visualSectionHtml = `
+      <!-- Single Metric Hero Highlight -->
+      <div class="bg-gradient-to-r from-coral-50 to-orange-50/50 p-6 rounded-2xl border border-coral-200 flex items-center justify-between">
+        <div>
+          <div class="text-xs font-mono font-bold text-coral-600 uppercase tracking-wider">${data.columns[0].replace(/_/g, ' ')}</div>
+          <div class="text-xs text-slate-500 font-mono mt-0.5">Calculated result from DuckDB engine</div>
+        </div>
+        <div class="text-4xl font-syne font-extrabold text-slate-900 bg-white px-6 py-2.5 rounded-xl border border-coral-100 shadow-sm">
+          ${formattedVal}
+        </div>
+      </div>
+    `;
+  }
+
   const cardHtml = `
     <div class="workspace-card p-6 space-y-5" id="${cardId}">
       
@@ -450,30 +501,16 @@ function appendAnalysisCard(data) {
       </div>
 
       <!-- 2. Key Findings (3 Discrete Cards) -->
+      ${data.key_findings && data.key_findings.length > 0 ? `
       <div>
         <div class="text-xs font-mono font-bold text-slate-400 uppercase mb-2">Key Analytical Findings:</div>
         <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
           ${findingsHtml}
         </div>
-      </div>
+      </div>` : ''}
 
-      <!-- 3. Interactive Visualization Card -->
-      <div class="bg-slate-50/80 p-5 rounded-xl border border-slate-200">
-        <div class="flex items-center justify-between mb-3">
-          <div>
-            <div class="font-syne font-bold text-sm text-slate-900">${data.chart?.title || 'Data Analytics'}</div>
-            <div class="text-xs text-slate-500 font-mono">${data.chart?.subtitle || 'Grounded in executed SQL calculations'}</div>
-          </div>
-          <div class="flex items-center space-x-1.5">
-            <button onclick="switchChartType('${cardId}', 'bar')" class="text-xs font-mono px-2.5 py-1 bg-white border border-slate-200 rounded-lg hover:border-coral-500">Bar</button>
-            <button onclick="switchChartType('${cardId}', 'line')" class="text-xs font-mono px-2.5 py-1 bg-white border border-slate-200 rounded-lg hover:border-coral-500">Line</button>
-            <button onclick="switchChartType('${cardId}', 'doughnut')" class="text-xs font-mono px-2.5 py-1 bg-white border border-slate-200 rounded-lg hover:border-coral-500">Donut</button>
-          </div>
-        </div>
-        <div class="h-64 flex items-center justify-center">
-          <canvas id="chart_${cardId}"></canvas>
-        </div>
-      </div>
+      <!-- 3. Dynamic Visual Section (Chart or Single Metric Hero) -->
+      ${visualSectionHtml}
 
       <!-- 4. Result Data Table with Pagination & Controls -->
       <div class="border border-slate-200 rounded-xl overflow-hidden">
@@ -910,63 +947,121 @@ function downloadResultCsv(cardId) {
 }
 
 function setupSettingsUI() {
-  const p = localStorage.getItem("datapilot_provider") || "Ollama (Local)";
-  const m = localStorage.getItem("datapilot_model") || "qwen2.5-coder:14b";
+  const p = localStorage.getItem("datapilot_provider") || "Google Gemini";
+  const m = localStorage.getItem("datapilot_model") || "gemini-1.5-flash";
   const k = localStorage.getItem("datapilot_apikey") || "";
 
-  document.getElementById("settingsProviderSelect").value = p;
-  document.getElementById("settingsModelInput").value = m;
-  document.getElementById("settingsApiKeyInput").value = k;
-  document.getElementById("topbarModelPill").textContent = m;
+  // Settings tab elements
+  const provSel = document.getElementById("settingsProviderSelect");
+  const modInp = document.getElementById("settingsModelInput");
+  const keyInp = document.getElementById("settingsApiKeyInput");
+  if (provSel) provSel.value = p;
+  if (modInp) modInp.value = m;
+  if (keyInp) keyInp.value = k;
+
+  // Inline Copilot elements
+  const copilotProv = document.getElementById("copilotProviderQuickSelect");
+  const copilotMod = document.getElementById("copilotModelQuickInput");
+  const copilotKey = document.getElementById("copilotApiKeyQuickInput");
+  if (copilotProv) copilotProv.value = p;
+  if (copilotMod) copilotMod.value = m;
+  if (copilotKey) copilotKey.value = k;
+
+  const pill = document.getElementById("topbarModelPill");
+  if (pill) pill.textContent = m;
+
   onSettingsProviderChange();
 }
 
 function onSettingsProviderChange() {
-  const p = document.getElementById("settingsProviderSelect").value;
+  const p = document.getElementById("settingsProviderSelect")?.value || "Google Gemini";
   const box = document.getElementById("settingsApiKeyBox");
   const modelInput = document.getElementById("settingsModelInput");
   const modelHint = document.getElementById("settingsModelHint");
 
+  let defaultModel = "gemini-1.5-flash";
   if (p === "Ollama (Local)") {
-    box.classList.add("hidden");
-    if (!modelInput.value || modelInput.value.startsWith("gemini") || modelInput.value.startsWith("gpt") || modelInput.value.startsWith("llama-3.3")) {
-      modelInput.value = "qwen2.5-coder:14b";
-    }
+    if (box) box.classList.add("hidden");
+    defaultModel = "qwen2.5-coder:14b";
     if (modelHint) modelHint.textContent = "Local Ollama models: qwen2.5-coder:14b, qwen2.5:7b, llama3.1";
   } else if (p === "Google Gemini") {
-    box.classList.remove("hidden");
-    if (!modelInput.value || modelInput.value.startsWith("qwen") || modelInput.value.startsWith("gpt") || modelInput.value.startsWith("llama-3.3")) {
-      modelInput.value = "gemini-1.5-flash";
-    }
-    if (modelHint) modelHint.textContent = "Gemini models: gemini-1.5-flash (recommended), gemini-2.0-flash, gemini-1.5-pro";
+    if (box) box.classList.remove("hidden");
+    defaultModel = "gemini-1.5-flash";
+    if (modelHint) modelHint.textContent = "Gemini models: gemini-1.5-flash (recommended & fast), gemini-1.5-pro";
   } else if (p === "OpenAI") {
-    box.classList.remove("hidden");
-    if (!modelInput.value || modelInput.value.startsWith("qwen") || modelInput.value.startsWith("gemini") || modelInput.value.startsWith("llama-3.3")) {
-      modelInput.value = "gpt-4o-mini";
-    }
+    if (box) box.classList.remove("hidden");
+    defaultModel = "gpt-4o-mini";
     if (modelHint) modelHint.textContent = "OpenAI models: gpt-4o-mini (recommended), gpt-4o, o3-mini";
   } else if (p === "Groq") {
-    box.classList.remove("hidden");
-    if (!modelInput.value || modelInput.value.startsWith("qwen") || modelInput.value.startsWith("gemini") || modelInput.value.startsWith("gpt")) {
-      modelInput.value = "llama-3.3-70b-versatile";
-    }
+    if (box) box.classList.remove("hidden");
+    defaultModel = "llama-3.3-70b-versatile";
     if (modelHint) modelHint.textContent = "Groq models: llama-3.3-70b-versatile, llama-3.1-8b-instant, mixtral-8x7b-32768";
-  } else {
-    box.classList.remove("hidden");
+  }
+
+  if (modelInput && (!modelInput.value || modelInput.value.includes("qwen") || modelInput.value.includes("gemini") || modelInput.value.includes("gpt") || modelInput.value.includes("llama"))) {
+    modelInput.value = defaultModel;
   }
 }
 
 function saveSettings() {
   const p = document.getElementById("settingsProviderSelect").value;
-  const m = document.getElementById("settingsModelInput").value;
-  const k = document.getElementById("settingsApiKeyInput").value;
+  const m = document.getElementById("settingsModelInput").value.trim();
+  const k = document.getElementById("settingsApiKeyInput").value.trim();
 
   localStorage.setItem("datapilot_provider", p);
   localStorage.setItem("datapilot_model", m);
   localStorage.setItem("datapilot_apikey", k);
-  document.getElementById("topbarModelPill").textContent = m;
 
-  alert("Settings saved successfully!");
+  const pill = document.getElementById("topbarModelPill");
+  if (pill) pill.textContent = m;
+
+  // Sync with Copilot inline bar
+  const copilotProv = document.getElementById("copilotProviderQuickSelect");
+  const copilotMod = document.getElementById("copilotModelQuickInput");
+  const copilotKey = document.getElementById("copilotApiKeyQuickInput");
+  if (copilotProv) copilotProv.value = p;
+  if (copilotMod) copilotMod.value = m;
+  if (copilotKey) copilotKey.value = k;
+
+  alert("Engine Configuration saved successfully!");
+}
+
+function syncProviderFromCopilot() {
+  const p = document.getElementById("copilotProviderQuickSelect").value;
+  let defaultModel = "gemini-1.5-flash";
+  if (p === "Ollama (Local)") defaultModel = "qwen2.5-coder:14b";
+  else if (p === "Google Gemini") defaultModel = "gemini-1.5-flash";
+  else if (p === "OpenAI") defaultModel = "gpt-4o-mini";
+  else if (p === "Groq") defaultModel = "llama-3.3-70b-versatile";
+
+  document.getElementById("copilotModelQuickInput").value = defaultModel;
+  localStorage.setItem("datapilot_provider", p);
+  localStorage.setItem("datapilot_model", defaultModel);
+
+  const pill = document.getElementById("topbarModelPill");
+  if (pill) pill.textContent = defaultModel;
+
+  const provSel = document.getElementById("settingsProviderSelect");
+  const modInp = document.getElementById("settingsModelInput");
+  if (provSel) provSel.value = p;
+  if (modInp) modInp.value = defaultModel;
+  onSettingsProviderChange();
+}
+
+function syncModelFromCopilot() {
+  const m = document.getElementById("copilotModelQuickInput").value.trim();
+  localStorage.setItem("datapilot_model", m);
+  const pill = document.getElementById("topbarModelPill");
+  if (pill) pill.textContent = m;
+  const modInp = document.getElementById("settingsModelInput");
+  if (modInp) modInp.value = m;
+}
+
+function syncApiKeyFromCopilot() {
+  const k = document.getElementById("copilotApiKeyQuickInput").value.trim();
+  localStorage.setItem("datapilot_apikey", k);
+  const keyInp = document.getElementById("settingsApiKeyInput");
+  if (keyInp) keyInp.value = k;
 }
 
 // ---------------------------------------------------------

@@ -23,17 +23,40 @@ class LightweightDataCrew:
         ollama_url: str = "http://localhost:11434"
     ):
         self.db = db_manager
-        self.provider = provider
-        self.model_name = model_name
-        self.api_key = api_key or os.getenv("OPENAI_API_KEY") or os.getenv("GEMINI_API_KEY") or ""
+        self.provider = provider or "Ollama (Local)"
+        self.model_name = (model_name or "").strip()
+        
+        # Resolve API Key from explicit argument or environment variables
+        env_key = ""
+        p_lower = self.provider.lower()
+        if "gemini" in p_lower:
+            env_key = os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY") or ""
+            if not self.model_name:
+                self.model_name = "gemini-1.5-flash"
+        elif "openai" in p_lower:
+            env_key = os.getenv("OPENAI_API_KEY") or ""
+            if not self.model_name:
+                self.model_name = "gpt-4o-mini"
+        elif "groq" in p_lower:
+            env_key = os.getenv("GROQ_API_KEY") or ""
+            if not self.model_name:
+                self.model_name = "llama-3.3-70b-versatile"
+        elif "ollama" in p_lower:
+            if not self.model_name:
+                self.model_name = "qwen2.5-coder:14b"
+            
+        self.api_key = (api_key or "").strip() or env_key.strip()
         self.ollama_url = ollama_url.rstrip("/")
 
     def _call_llm(self, prompt: str, system_prompt: str = "") -> str:
-        """Invokes the selected LLM provider with robust timeout and structured temperature."""
-        if self.provider == "Ollama (Local)":
+        """Invokes the selected LLM provider with robust error handling and clear diagnostics."""
+        p_lower = self.provider.lower()
+
+        # 1. Ollama (Local)
+        if "ollama" in p_lower:
             url = f"{self.ollama_url}/api/generate"
             payload = {
-                "model": self.model_name,
+                "model": self.model_name or "qwen2.5-coder:14b",
                 "prompt": prompt,
                 "system": system_prompt,
                 "stream": False,
@@ -44,14 +67,115 @@ class LightweightDataCrew:
             }
             try:
                 resp = requests.post(url, json=payload, timeout=180)
-                resp.raise_for_status()
+                if not resp.ok:
+                    err_msg = resp.text
+                    try:
+                        err_json = resp.json()
+                        err_msg = err_json.get("error", resp.text)
+                    except Exception:
+                        pass
+                    raise RuntimeError(f"Ollama Error ({resp.status_code}): {err_msg}. Make sure model '{self.model_name}' is pulled (`ollama pull {self.model_name}`).")
                 return resp.json().get("response", "").strip()
             except requests.exceptions.Timeout:
-                raise RuntimeError("Ollama request timed out. Tip: Switch to 'qwen2.5:7b' for faster inference.")
-            except Exception as e:
-                raise RuntimeError(f"Ollama connection error: {str(e)}. Ensure Ollama is running at {self.ollama_url}")
+                raise RuntimeError("Ollama request timed out after 180s. Tip: Switch to 'qwen2.5:7b' for faster inference.")
+            except (requests.exceptions.ConnectionError, requests.exceptions.RequestException) as e:
+                raise RuntimeError(
+                    f"Cannot connect to local Ollama at {self.ollama_url}. "
+                    "Make sure Ollama is running (`ollama serve`), or switch Provider to 'Google Gemini' or 'OpenAI' and enter an API key."
+                )
 
-        elif self.provider == "OpenAI":
+        # 2. Google Gemini
+        elif "gemini" in p_lower:
+            if not self.api_key:
+                raise RuntimeError("Google Gemini API key is missing. Please enter your Gemini API Key in Settings or the Copilot model bar.")
+
+            req_model = (self.model_name or "gemini-1.5-flash").strip()
+            if req_model.startswith("models/"):
+                req_model = req_model[7:]
+
+            full_prompt = f"{system_prompt}\n\n{prompt}".strip() if system_prompt else prompt.strip()
+            payload = {
+                "contents": [
+                    {
+                        "role": "user",
+                        "parts": [{"text": full_prompt}]
+                    }
+                ],
+                "generationConfig": {
+                    "temperature": 0.1,
+                    "maxOutputTokens": 2048
+                }
+            }
+            headers = {"Content-Type": "application/json"}
+
+            # Build candidate list with user-specified model first
+            candidate_models = [req_model]
+            
+            # Dynamically query Gemini ListModels to find exactly which models are enabled for this API key
+            for version in ["v1beta", "v1"]:
+                try:
+                    list_url = f"https://generativelanguage.googleapis.com/{version}/models?key={self.api_key}"
+                    list_resp = requests.get(list_url, timeout=6)
+                    if list_resp.ok:
+                        m_list = list_resp.json().get("models", [])
+                        for item in m_list:
+                            name = item.get("name", "").replace("models/", "")
+                            methods = item.get("supportedGenerationMethods", [])
+                            if "generateContent" in methods and name not in candidate_models:
+                                # Prioritize flash and pro models
+                                if "flash" in name or "pro" in name or "gemini" in name:
+                                    candidate_models.append(name)
+                        if len(candidate_models) > 1:
+                            break
+                except Exception:
+                    pass
+
+            # Fallback static list if ListModels was blocked
+            for fallback in ["gemini-1.5-flash-latest", "gemini-1.5-flash", "gemini-1.5-flash-001", "gemini-1.5-flash-002", "gemini-1.5-pro", "gemini-pro", "gemini-2.0-flash-exp", "gemini-2.5-flash"]:
+                if fallback not in candidate_models:
+                    candidate_models.append(fallback)
+
+            last_error = None
+            for api_version in ["v1beta", "v1"]:
+                for try_model in candidate_models:
+                    url = f"https://generativelanguage.googleapis.com/{api_version}/models/{try_model}:generateContent?key={self.api_key}"
+                    try:
+                        resp = requests.post(url, headers=headers, json=payload, timeout=40)
+                    except Exception as e:
+                        last_error = str(e)
+                        continue
+
+                    if resp.status_code == 404:
+                        continue
+
+                    if not resp.ok:
+                        err_msg = resp.text
+                        try:
+                            err_json = resp.json()
+                            err_msg = err_json.get("error", {}).get("message", resp.text)
+                        except Exception:
+                            pass
+                        last_error = f"Gemini ({resp.status_code}): {err_msg}"
+                        # If unauthorized/invalid key, don't keep looping
+                        if resp.status_code in [400, 401, 403] and "API_KEY" in err_msg.upper():
+                            raise RuntimeError(f"Gemini API Key Error: {err_msg}. Please verify your API key.")
+                        continue
+
+                    res_json = resp.json()
+                    candidates = res_json.get("candidates", [])
+                    if not candidates:
+                        continue
+                    parts = candidates[0].get("content", {}).get("parts", [])
+                    if not parts:
+                        continue
+                    return parts[0].get("text", "").strip()
+
+            raise RuntimeError(f"Gemini API Error: {last_error or 'Could not connect to Gemini API with your key.'}")
+
+        # 3. OpenAI
+        elif "openai" in p_lower:
+            if not self.api_key:
+                raise RuntimeError("OpenAI API key is missing. Please enter your OpenAI API Key in Settings or the Copilot model bar.")
             headers = {
                 "Authorization": f"Bearer {self.api_key}",
                 "Content-Type": "application/json"
@@ -64,22 +188,11 @@ class LightweightDataCrew:
                 ],
                 "temperature": 0.1
             }
-            resp = requests.post("https://api.openai.com/v1/chat/completions", headers=headers, json=payload, timeout=60)
-            resp.raise_for_status()
-            return resp.json()["choices"][0]["message"]["content"].strip()
+            try:
+                resp = requests.post("https://api.openai.com/v1/chat/completions", headers=headers, json=payload, timeout=60)
+            except Exception as e:
+                raise RuntimeError(f"Network error connecting to OpenAI API: {str(e)}")
 
-        elif self.provider == "Google Gemini":
-            model = self.model_name.strip() if self.model_name else "gemini-1.5-flash"
-            if model.startswith("models/"):
-                model = model[7:]
-            url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={self.api_key}"
-            payload = {
-                "contents": [
-                    {"role": "user", "parts": [{"text": f"{system_prompt}\n\n{prompt}"}]}
-                ],
-                "generationConfig": {"temperature": 0.1}
-            }
-            resp = requests.post(url, json=payload, timeout=60)
             if not resp.ok:
                 err_msg = resp.text
                 try:
@@ -87,14 +200,13 @@ class LightweightDataCrew:
                     err_msg = err_json.get("error", {}).get("message", resp.text)
                 except Exception:
                     pass
-                raise RuntimeError(f"Gemini API Error ({resp.status_code}): {err_msg}")
-            res_json = resp.json()
-            candidates = res_json.get("candidates", [])
-            if not candidates or "content" not in candidates[0]:
-                raise RuntimeError("No response returned by Gemini.")
-            return candidates[0]["content"]["parts"][0]["text"].strip()
+                raise RuntimeError(f"OpenAI API Error ({resp.status_code}): {err_msg}")
+            return resp.json()["choices"][0]["message"]["content"].strip()
 
-        elif self.provider == "Groq":
+        # 4. Groq
+        elif "groq" in p_lower:
+            if not self.api_key:
+                raise RuntimeError("Groq API key is missing. Please enter your Groq API Key in Settings or the Copilot model bar.")
             headers = {
                 "Authorization": f"Bearer {self.api_key}",
                 "Content-Type": "application/json"
@@ -107,7 +219,11 @@ class LightweightDataCrew:
                 ],
                 "temperature": 0.1
             }
-            resp = requests.post("https://api.groq.com/openai/v1/chat/completions", headers=headers, json=payload, timeout=60)
+            try:
+                resp = requests.post("https://api.groq.com/openai/v1/chat/completions", headers=headers, json=payload, timeout=60)
+            except Exception as e:
+                raise RuntimeError(f"Network error connecting to Groq API: {str(e)}")
+
             if not resp.ok:
                 err_msg = resp.text
                 try:
@@ -118,7 +234,7 @@ class LightweightDataCrew:
                 raise RuntimeError(f"Groq API Error ({resp.status_code}): {err_msg}")
             return resp.json()["choices"][0]["message"]["content"].strip()
 
-        raise ValueError(f"Unsupported provider: {self.provider}")
+        raise ValueError(f"Unsupported LLM provider: {self.provider}")
 
     def generate_suggested_questions(self) -> List[str]:
         """Generates dynamic, schema-aware suggested analytical questions based on actual dataset columns."""
@@ -176,16 +292,16 @@ class LightweightDataCrew:
             context_str += "\nUse this context to resolve references like 'those products', 'that region', or 'only last month'.\n\n"
 
         # -------------------------------------------------------------
-        # STEP 2: SQL Specialist (Generation + Execution + Auto-Healing)
+        # STEP 2: SQL Specialist (Pure LLM Generation + Auto-Healing)
         # -------------------------------------------------------------
         t0 = time.perf_counter()
         sql_system = (
-            "You are Agent 2 (DuckDB SQL Specialist). Your job is to convert the question into a valid, "
-            "read-only analytical SQL query against the table `dataset`.\n"
+            "You are Data Sensei, an expert DuckDB SQL Data Analyst.\n"
+            "Your sole mission is to analyze the user's uploaded dataset (table `dataset`).\n"
             "Rules:\n"
-            "1. Output ONLY the query inside ```sql ... ``` block.\n"
-            "2. Strictly use table name `dataset`.\n"
-            "3. Use appropriate aggregations (SUM, AVG, COUNT), grouping, and ORDER BY.\n"
+            "1. If the question asks to analyze, query, aggregate, or filter data from the dataset, write the optimal read-only DuckDB SQL inside ```sql ... ``` block using table `dataset`.\n"
+            "2. If the user's input is NOT a data analysis question (e.g. random math like '2+2', general chit-chat, unrelated trivia), output strictly: `OUT_OF_DOMAIN`.\n"
+            "3. Strictly use table name `dataset`.\n"
             "4. Never generate DROP, DELETE, INSERT, or ALTER commands."
         )
 
@@ -193,11 +309,40 @@ class LightweightDataCrew:
             f"{context_str}"
             f"Table Schema Information:\n{schema_summary}\n\n"
             f"User Question: '{user_question}'\n\n"
-            "Write the optimal DuckDB SQL query to answer this question accurately."
+            "Analyze whether this is a dataset question. If so, write the DuckDB SQL query. If completely unrelated to the dataset, output OUT_OF_DOMAIN."
         )
 
+        # Call selected LLM directly (errors bubble up directly to UI)
         sql_response = self._call_llm(sql_prompt, sql_system)
-        extracted_sql = self._extract_sql(sql_response) or "SELECT * FROM dataset LIMIT 10"
+
+        # Handle Out of Domain politely
+        if "OUT_OF_DOMAIN" in (sql_response or "").upper():
+            return {
+                "question": user_question,
+                "total_duration": round(time.perf_counter() - start_total, 2),
+                "sql": "-- Out of Scope: Question is unrelated to active dataset",
+                "sql_error": None,
+                "summary": f"🥋 Data Sensei is strictly dedicated to dataset intelligence. Please ask a question related to your active dataset '{self.db.source_filename or 'dataset'}' (e.g., trends, category comparisons, highest performers).",
+                "key_findings": [
+                    f"Active Dataset: **{self.db.source_filename or 'Loaded Data'}** ({self.db.row_count:,} rows, {self.db.column_count} columns).",
+                    f"Quantitative Columns: {', '.join(self.db.numeric_cols[:4]) if self.db.numeric_cols else 'None'}",
+                    f"Categorical Dimensions: {', '.join(self.db.categorical_cols[:4]) if self.db.categorical_cols else 'None'}"
+                ],
+                "chart": None,
+                "recommendations": f"Try asking: 'Compare total {self.db.numeric_cols[0] if self.db.numeric_cols else 'metrics'} across {self.db.categorical_cols[0] if self.db.categorical_cols else 'categories'}'",
+                "columns": [],
+                "rows": [],
+                "total_rows": 0,
+                "activity_log": [{
+                    "stage": "Guardrail",
+                    "title": "Out-of-scope query guided back to dataset analysis",
+                    "time": round(time.perf_counter() - t0, 3)
+                }]
+            }
+
+        extracted_sql = self._extract_sql(sql_response)
+        if not extracted_sql:
+            raise RuntimeError(f"AI model did not return a valid SQL query block. Raw AI output:\n{sql_response[:300]}")
 
         # Execute on DuckDB engine
         df_result, exec_time, error = self.db.execute_query(extracted_sql)
@@ -218,9 +363,12 @@ class LightweightDataCrew:
                 extracted_sql = new_sql
                 df_result, exec_time, error = self.db.execute_query(extracted_sql)
 
+        if error:
+            raise RuntimeError(f"DuckDB SQL Execution Error: {error}\nExecuted Query:\n{extracted_sql}")
+
         activity_log.append({
             "stage": "SQL Analyst",
-            "title": "Query generated & executed in DuckDB" + (" (self-healed)" if retry_occurred and not error else ""),
+            "title": f"Query generated by {self.provider} & executed in DuckDB" + (" (self-healed)" if retry_occurred and not error else ""),
             "time": round(time.perf_counter() - t0, 3),
             "sql": extracted_sql,
             "exec_time_sec": round(exec_time, 4),
@@ -246,7 +394,7 @@ class LightweightDataCrew:
             "    \"Finding 3 highlighting an anomaly or distribution\"\n"
             "  ],\n"
             "  \"chart\": {\n"
-            "    \"chart_type\": \"bar|line|doughnut|scatter\",\n"
+            "    \"chart_type\": \"bar|line|doughnut\",\n"
             "    \"title\": \"Chart Title\",\n"
             "    \"subtitle\": \"Short description of what is measured\",\n"
             f"    \"x_col\": \"{cols[0] if cols else 'x'}\",\n"
@@ -260,30 +408,29 @@ class LightweightDataCrew:
             f"User Question: '{user_question}'\n\n"
             f"Executed SQL Query:\n```sql\n{extracted_sql}\n```\n\n"
             f"Query Results Data:\n{result_table_md}\n\n"
-            "Analyze the data and provide structured findings."
+            "Analyze the data and provide structured findings in JSON."
         )
 
         report_raw = self._call_llm(analyst_prompt, analyst_system)
         structured_data = self._extract_json(report_raw)
 
-        # Fallback if LLM output didn't parse clean JSON
         if not structured_data:
             structured_data = {
-                "summary": report_raw[:200].replace("\n", " "),
-                "key_findings": [f"Result contains {len(df_result) if df_result is not None else 0} records."],
+                "summary": report_raw[:300].replace("\n", " "),
+                "key_findings": [f"Query returned {len(df_result) if df_result is not None else 0} rows."],
                 "chart": {
                     "chart_type": "bar",
-                    "title": f"Analysis of {cols[0] if cols else 'Data'}",
-                    "subtitle": "Generated from query results",
+                    "title": f"Analytics for {cols[0] if cols else 'Result'}",
+                    "subtitle": "Generated by AI Analyst",
                     "x_col": cols[0] if cols else "x",
                     "y_col": cols[1] if len(cols) > 1 else (cols[0] if cols else "y")
                 },
-                "recommendations": "Review tabular breakdown for detailed segment performance."
+                "recommendations": "Review tabular records for granular segment details."
             }
 
         activity_log.append({
             "stage": "Data Analyst",
-            "title": "Derived key findings & chart specifications",
+            "title": f"Derived key findings & chart specs via {self.provider}",
             "time": round(time.perf_counter() - t0, 3)
         })
 

@@ -309,6 +309,28 @@
           </div>
         </div>
 
+        <!-- Copilot Inline Model Selector & API Key Bar -->
+        <div class="workspace-card p-3 bg-slate-50/90 border border-slate-200 flex flex-wrap items-center justify-between gap-3 text-xs font-mono">
+          <div class="flex items-center space-x-2 flex-wrap gap-y-2">
+            <span class="font-bold text-slate-700 flex items-center space-x-1">
+              <span>🥋 ENGINE:</span>
+            </span>
+            <select id="copilotProviderQuickSelect" onchange="syncProviderFromCopilot()" class="bg-white border border-slate-300 rounded-lg px-2.5 py-1 text-slate-800 font-semibold focus:border-coral-500 outline-none">
+              <option value="Google Gemini">Google Gemini (Free/Fast)</option>
+              <option value="OpenAI">OpenAI</option>
+              <option value="Groq">Groq</option>
+              <option value="Ollama (Local)">Ollama (Local)</option>
+            </select>
+            <input type="text" id="copilotModelQuickInput" oninput="syncModelFromCopilot()" placeholder="gemini-1.5-flash" class="bg-white border border-slate-300 rounded-lg px-2.5 py-1 text-slate-800 w-36 focus:border-coral-500 outline-none" title="Model Name">
+            <input type="password" id="copilotApiKeyQuickInput" oninput="syncApiKeyFromCopilot()" placeholder="Paste API Key here..." class="bg-white border border-slate-300 rounded-lg px-2.5 py-1 text-slate-800 w-44 sm:w-52 focus:border-coral-500 outline-none" title="API Key">
+          </div>
+          <div class="flex items-center space-x-2 text-[11px]">
+            <span id="copilotEngineStatus" class="flex items-center space-x-1 font-semibold text-slate-500">
+              <span>Auto-saved</span>
+            </span>
+          </div>
+        </div>
+
         <!-- Input Bar (Sticky at bottom or clean form) -->
         <div class="workspace-card p-4 shadow-lg border-coral-200">
           <div class="flex items-center justify-between mb-2">
