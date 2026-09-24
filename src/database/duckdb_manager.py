@@ -28,19 +28,41 @@ class DuckDBManager:
         self.date_cols: List[str] = []
 
     def load_file(self, file_path_or_buffer: Any, filename: str, file_size_bytes: int = 0) -> Tuple[bool, str]:
-        """Ingests CSV, Parquet, or Excel files into DuckDB."""
+        """Ingests CSV, Parquet, or Excel files into DuckDB with robust encoding fallbacks."""
         try:
             self.source_filename = filename
             self.file_size_mb = round(file_size_bytes / (1024 * 1024), 2) if file_size_bytes > 0 else 0.5
             ext = os.path.splitext(filename)[1].lower()
 
             if ext == ".csv":
+                loaded_ok = False
+                # Attempt 1: Direct DuckDB auto-detect
                 if isinstance(file_path_or_buffer, str):
-                    self.conn.execute(
-                        f"CREATE OR REPLACE TABLE {self.table_name} AS SELECT * FROM read_csv_auto('{file_path_or_buffer}')"
-                    )
-                else:
-                    df = pd.read_csv(file_path_or_buffer)
+                    try:
+                        self.conn.execute(
+                            f"CREATE OR REPLACE TABLE {self.table_name} AS SELECT * FROM read_csv_auto('{file_path_or_buffer}', ignore_errors=true)"
+                        )
+                        loaded_ok = True
+                    except Exception:
+                        loaded_ok = False
+
+                # Attempt 2: Pandas multi-encoding fallback
+                if not loaded_ok:
+                    df = None
+                    for enc in ["utf-8", "latin1", "cp1252", "iso-8859-1", "utf-8-sig"]:
+                        try:
+                            if isinstance(file_path_or_buffer, str):
+                                df = pd.read_csv(file_path_or_buffer, encoding=enc, on_bad_lines="skip")
+                            else:
+                                file_path_or_buffer.seek(0)
+                                df = pd.read_csv(file_path_or_buffer, encoding=enc, on_bad_lines="skip")
+                            break
+                        except Exception:
+                            continue
+
+                    if df is None:
+                        return False, "Could not decode CSV file. Please verify the file is a valid CSV."
+
                     self.conn.register("temp_df", df)
                     self.conn.execute(f"CREATE OR REPLACE TABLE {self.table_name} AS SELECT * FROM temp_df")
                     self.conn.unregister("temp_df")

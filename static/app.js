@@ -70,7 +70,15 @@ async function uploadFile(file) {
 
   try {
     const res = await fetch("/api/upload", { method: "POST", body: formData });
-    const data = await res.json();
+    let data;
+    try {
+      data = await res.json();
+    } catch (parseErr) {
+      const text = await res.text();
+      alert("Server Error: " + (text || "Failed to process file."));
+      return;
+    }
+
     if (res.ok) {
       onDatasetLoaded(data);
       navigateTab("dashboard");
