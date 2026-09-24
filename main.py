@@ -3,10 +3,15 @@ Full-featured Analytics Workspace backend supporting multi-agent analysis, auto-
 """
 
 from __future__ import annotations
+import sys
 import os
 import shutil
 import json
 import time
+
+# Ensure workspace root is on sys.path for direct VS Code execution
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+
 import pandas as pd
 from typing import Optional, Dict, Any, List
 from fastapi import FastAPI, File, UploadFile, HTTPException, Body
@@ -327,5 +332,5 @@ async def generate_executive_report(req: ReportRequest):
 if __name__ == "__main__":
     import uvicorn
     port = int(os.environ.get("PORT", 8000))
-    print(f"🚀 Launching DataSensei Workspace on port {port} ...")
-    uvicorn.run("main:app", host="0.0.0.0", port=port, reload=False)
+    print(f"🥋 Launching DATA SENSEI on http://127.0.0.1:{port} (or http://localhost:{port}) ...")
+    uvicorn.run(app, host="0.0.0.0", port=port)
