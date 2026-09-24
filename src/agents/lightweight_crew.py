@@ -69,7 +69,10 @@ class LightweightDataCrew:
             return resp.json()["choices"][0]["message"]["content"].strip()
 
         elif self.provider == "Google Gemini":
-            url = f"https://generativelanguage.googleapis.com/v1beta/models/{self.model_name or 'gemini-1.5-flash'}:generateContent?key={self.api_key}"
+            model = self.model_name.strip() if self.model_name else "gemini-1.5-flash"
+            if model.startswith("models/"):
+                model = model[7:]
+            url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={self.api_key}"
             payload = {
                 "contents": [
                     {"role": "user", "parts": [{"text": f"{system_prompt}\n\n{prompt}"}]}
@@ -77,8 +80,43 @@ class LightweightDataCrew:
                 "generationConfig": {"temperature": 0.1}
             }
             resp = requests.post(url, json=payload, timeout=60)
-            resp.raise_for_status()
-            return resp.json()["candidates"][0]["content"]["parts"][0]["text"].strip()
+            if not resp.ok:
+                err_msg = resp.text
+                try:
+                    err_json = resp.json()
+                    err_msg = err_json.get("error", {}).get("message", resp.text)
+                except Exception:
+                    pass
+                raise RuntimeError(f"Gemini API Error ({resp.status_code}): {err_msg}")
+            res_json = resp.json()
+            candidates = res_json.get("candidates", [])
+            if not candidates or "content" not in candidates[0]:
+                raise RuntimeError("No response returned by Gemini.")
+            return candidates[0]["content"]["parts"][0]["text"].strip()
+
+        elif self.provider == "Groq":
+            headers = {
+                "Authorization": f"Bearer {self.api_key}",
+                "Content-Type": "application/json"
+            }
+            payload = {
+                "model": self.model_name or "llama-3.3-70b-versatile",
+                "messages": [
+                    {"role": "system", "content": system_prompt or "You are an elite SQL and data analytics copilot."},
+                    {"role": "user", "content": prompt}
+                ],
+                "temperature": 0.1
+            }
+            resp = requests.post("https://api.groq.com/openai/v1/chat/completions", headers=headers, json=payload, timeout=60)
+            if not resp.ok:
+                err_msg = resp.text
+                try:
+                    err_json = resp.json()
+                    err_msg = err_json.get("error", {}).get("message", resp.text)
+                except Exception:
+                    pass
+                raise RuntimeError(f"Groq API Error ({resp.status_code}): {err_msg}")
+            return resp.json()["choices"][0]["message"]["content"].strip()
 
         raise ValueError(f"Unsupported provider: {self.provider}")
 
@@ -250,7 +288,13 @@ class LightweightDataCrew:
         })
 
         # Cap results preview for safety
-        data_records = df_result.to_dict(orient="records") if df_result is not None else []
+        if df_result is not None and not df_result.empty:
+            try:
+                data_records = json.loads(df_result.to_json(orient="records", date_format="iso"))
+            except Exception:
+                data_records = df_result.fillna("").to_dict(orient="records")
+        else:
+            data_records = []
 
         return {
             "question": user_question,

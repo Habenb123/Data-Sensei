@@ -60,6 +60,15 @@ async def get_dataset_info():
     if not db_manager.loaded:
         return {"loaded": False}
     profile = db_manager.get_detailed_schema_profile()
+    preview_df = db_manager.get_dataframe_preview(8)
+    if not preview_df.empty:
+        try:
+            preview_records = json.loads(preview_df.to_json(orient="records", date_format="iso"))
+        except Exception:
+            preview_records = preview_df.fillna("").to_dict(orient="records")
+    else:
+        preview_records = []
+
     return {
         "loaded": True,
         "filename": db_manager.source_filename,
@@ -67,7 +76,7 @@ async def get_dataset_info():
         "row_count": db_manager.row_count,
         "column_count": db_manager.column_count,
         "profile": profile,
-        "preview": db_manager.get_dataframe_preview(8).to_dict(orient="records")
+        "preview": preview_records
     }
 
 
@@ -98,8 +107,10 @@ async def upload_file(file: UploadFile = File(...)):
             raise HTTPException(status_code=400, detail=msg)
 
         return await get_dataset_info()
+    except HTTPException:
+        raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=f"File processing error: {str(e)}")
 
 
 @app.post("/api/load-sample")
@@ -212,12 +223,20 @@ async def execute_raw_sql(req: SQLRequest):
     if error:
         return {"success": False, "error": error, "exec_time": round(exec_time, 4)}
 
+    if df is not None and not df.empty:
+        try:
+            rows = json.loads(df.to_json(orient="records", date_format="iso"))
+        except Exception:
+            rows = df.fillna("").to_dict(orient="records")
+    else:
+        rows = []
+
     return {
         "success": True,
         "exec_time": round(exec_time, 4),
-        "row_count": len(df),
-        "columns": list(df.columns),
-        "rows": df.to_dict(orient="records")
+        "row_count": len(df) if df is not None else 0,
+        "columns": list(df.columns) if df is not None else [],
+        "rows": rows
     }
 
 

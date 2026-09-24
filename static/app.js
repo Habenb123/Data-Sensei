@@ -70,12 +70,12 @@ async function uploadFile(file) {
 
   try {
     const res = await fetch("/api/upload", { method: "POST", body: formData });
+    const text = await res.text();
     let data;
     try {
-      data = await res.json();
+      data = JSON.parse(text);
     } catch (parseErr) {
-      const text = await res.text();
-      alert("Server Error: " + (text || "Failed to process file."));
+      alert("Server Error (" + res.status + "): " + (text || "Failed to process file."));
       return;
     }
 
@@ -83,7 +83,7 @@ async function uploadFile(file) {
       onDatasetLoaded(data);
       navigateTab("dashboard");
     } else {
-      alert("Upload failed: " + (data.detail || "Error loading file"));
+      alert("Upload failed: " + (data.detail || text || "Error loading file"));
     }
   } catch (err) {
     alert("Upload error: " + err.message);
@@ -93,12 +93,19 @@ async function uploadFile(file) {
 async function loadSampleData() {
   try {
     const res = await fetch("/api/load-sample", { method: "POST" });
-    const data = await res.json();
+    const text = await res.text();
+    let data;
+    try {
+      data = JSON.parse(text);
+    } catch (e) {
+      alert("Sample load failed (" + res.status + "): " + (text || "Invalid response"));
+      return;
+    }
     if (res.ok) {
       onDatasetLoaded(data);
       navigateTab("dashboard");
     } else {
-      alert("Sample load failed: " + (data.detail || "Error loading sample"));
+      alert("Sample load failed: " + (data.detail || text || "Error loading sample"));
     }
   } catch (err) {
     alert("Error loading sample: " + err.message);
@@ -119,8 +126,15 @@ async function resetDataset() {
 async function loadInitialDataset() {
   try {
     const res = await fetch("/api/dataset-info");
-    const data = await res.json();
-    if (data.loaded) {
+    const text = await res.text();
+    let data;
+    try {
+      data = JSON.parse(text);
+    } catch (e) {
+      showEmptyDatasetState();
+      return;
+    }
+    if (data && data.loaded) {
       onDatasetLoaded(data);
     } else {
       showEmptyDatasetState();
@@ -363,11 +377,17 @@ async function runCopilotQuery() {
       })
     });
 
-    clearInterval(timer);
-    const result = await res.json();
+    const text = await res.text();
+    let result;
+    try {
+      result = JSON.parse(text);
+    } catch (parseErr) {
+      alert("Analysis failed (" + res.status + "): " + (text || "Failed to parse analysis response."));
+      return;
+    }
 
     if (!res.ok) {
-      alert("Analysis failed: " + (result.detail || "Unknown error"));
+      alert("Analysis failed: " + (result.detail || text || "Unknown error"));
       return;
     }
 
@@ -755,11 +775,19 @@ async function executeRawSqlStudio() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ sql })
     });
-    const data = await res.json();
+    const text = await res.text();
+    let data;
+    try {
+      data = JSON.parse(text);
+    } catch (e) {
+      statusElem.textContent = "Error: " + text;
+      alert("SQL Error (" + res.status + "): " + text);
+      return;
+    }
 
     if (!data.success) {
-      statusElem.textContent = "Error: " + data.error;
-      alert("SQL Error: " + data.error);
+      statusElem.textContent = "Error: " + (data.error || text);
+      alert("SQL Error: " + (data.error || text));
       return;
     }
 
@@ -896,8 +924,33 @@ function setupSettingsUI() {
 function onSettingsProviderChange() {
   const p = document.getElementById("settingsProviderSelect").value;
   const box = document.getElementById("settingsApiKeyBox");
+  const modelInput = document.getElementById("settingsModelInput");
+  const modelHint = document.getElementById("settingsModelHint");
+
   if (p === "Ollama (Local)") {
     box.classList.add("hidden");
+    if (!modelInput.value || modelInput.value.startsWith("gemini") || modelInput.value.startsWith("gpt") || modelInput.value.startsWith("llama-3.3")) {
+      modelInput.value = "qwen2.5-coder:14b";
+    }
+    if (modelHint) modelHint.textContent = "Local Ollama models: qwen2.5-coder:14b, qwen2.5:7b, llama3.1";
+  } else if (p === "Google Gemini") {
+    box.classList.remove("hidden");
+    if (!modelInput.value || modelInput.value.startsWith("qwen") || modelInput.value.startsWith("gpt") || modelInput.value.startsWith("llama-3.3")) {
+      modelInput.value = "gemini-1.5-flash";
+    }
+    if (modelHint) modelHint.textContent = "Gemini models: gemini-1.5-flash (recommended), gemini-2.0-flash, gemini-1.5-pro";
+  } else if (p === "OpenAI") {
+    box.classList.remove("hidden");
+    if (!modelInput.value || modelInput.value.startsWith("qwen") || modelInput.value.startsWith("gemini") || modelInput.value.startsWith("llama-3.3")) {
+      modelInput.value = "gpt-4o-mini";
+    }
+    if (modelHint) modelHint.textContent = "OpenAI models: gpt-4o-mini (recommended), gpt-4o, o3-mini";
+  } else if (p === "Groq") {
+    box.classList.remove("hidden");
+    if (!modelInput.value || modelInput.value.startsWith("qwen") || modelInput.value.startsWith("gemini") || modelInput.value.startsWith("gpt")) {
+      modelInput.value = "llama-3.3-70b-versatile";
+    }
+    if (modelHint) modelHint.textContent = "Groq models: llama-3.3-70b-versatile, llama-3.1-8b-instant, mixtral-8x7b-32768";
   } else {
     box.classList.remove("hidden");
   }
