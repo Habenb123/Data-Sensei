@@ -1,0 +1,588 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DataSensei — Your AI Data Analysis Master 🥋</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Chart.js CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- Marked Markdown Parser -->
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <!-- Custom Style -->
+  <link rel="stylesheet" href="/static/style.css">
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            coral: { 50: '#fff1f2', 100: '#ffe4e6', 500: '#f43f5e', 600: '#e11d48', 700: '#be123c' }
+          }
+        }
+      }
+    }
+  </script>
+</head>
+<body class="bg-slate-50 text-slate-800 min-h-screen flex antialiased">
+
+  <!-- ==================================================== -->
+  <!-- PERSISTENT LEFT SIDEBAR                              -->
+  <!-- ==================================================== -->
+  <aside class="w-64 bg-white border-r border-slate-200 flex flex-col justify-between shrink-0 h-screen sticky top-0 z-30">
+    <div>
+      <!-- Brand Logo -->
+      <div class="p-6 border-b border-slate-100 flex items-center justify-between">
+        <div class="flex items-center space-x-3">
+          <div class="w-10 h-10 rounded-xl bg-slate-900 border border-slate-800 flex items-center justify-center p-1.5 shadow-sm text-coral-500">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" fill="none" class="w-full h-full text-coral-500">
+              <path d="M 50 10 C 27.9 10 10 27.9 10 50 C 10 63.5 16.7 75.4 27 82.7 C 22.5 73.8 20 63.8 20 53 C 20 34.8 34.8 20 53 20 C 66.8 20 78.8 28.5 83.8 40.8 C 81.2 23.2 67.2 10 50 10 Z" fill="currentColor"/>
+              <path d="M 48 29 L 34 38 L 59 44 L 62 43 Z" fill="currentColor"/>
+              <path d="M 44 38 C 44 38 49 39 52 44 C 50 46 47 48 45 45 C 43 43 44 38 44 38 Z" fill="currentColor"/>
+              <path d="M 45 45 C 41 47 38 52 38 58 C 38 65 43 72 53 76 C 54 74 57 66 56 62 C 55 58 53 54 48 49 Z" fill="currentColor"/>
+              <path d="M 68 47 L 22 83 L 24 85 L 70 49 Z" fill="currentColor"/>
+              <path d="M 57 56 L 62 61 L 63 60 L 58 55 Z" fill="currentColor"/>
+            </svg>
+          </div>
+          <div>
+            <div class="font-syne text-base font-extrabold tracking-tight text-slate-900 leading-none">DATA SENSEI</div>
+            <div class="text-[10px] text-coral-600 font-bold tracking-wider mt-0.5 uppercase">AI DATA MASTER // SENSE AI</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Navigation Section -->
+      <nav class="p-4 space-y-1.5 font-medium text-sm">
+        <button onclick="navigateTab('dashboard')" id="nav-dashboard" class="nav-btn active w-full flex items-center space-x-3 px-3.5 py-2.5 rounded-xl text-left">
+          <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"/></svg>
+          <span>Dashboard</span>
+        </button>
+
+        <button onclick="navigateTab('dataset')" id="nav-dataset" class="nav-btn w-full flex items-center space-x-3 px-3.5 py-2.5 rounded-xl text-left">
+          <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+          <span>Dataset Overview</span>
+        </button>
+
+        <button onclick="navigateTab('copilot')" id="nav-copilot" class="nav-btn w-full flex items-center space-x-3 px-3.5 py-2.5 rounded-xl text-left">
+          <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+          <span>Sense AI</span>
+        </button>
+
+        <button onclick="navigateTab('visualizations')" id="nav-visualizations" class="nav-btn w-full flex items-center space-x-3 px-3.5 py-2.5 rounded-xl text-left">
+          <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M11 3.055A9.001 9.001 0 1020.945 13H11V3.055z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M20.488 9H15V3.512A9.025 9.025 0 0120.488 9z"/></svg>
+          <span>Visualizations Studio</span>
+        </button>
+
+        <button onclick="navigateTab('eda')" id="nav-eda" class="nav-btn w-full flex items-center space-x-3 px-3.5 py-2.5 rounded-xl text-left">
+          <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z"/></svg>
+          <span>Automated EDA</span>
+        </button>
+
+        <button onclick="navigateTab('sql')" id="nav-sql" class="nav-btn w-full flex items-center space-x-3 px-3.5 py-2.5 rounded-xl text-left">
+          <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"/></svg>
+          <span>SQL Explorer</span>
+        </button>
+
+        <button onclick="navigateTab('reports')" id="nav-reports" class="nav-btn w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-left">
+          <div class="flex items-center space-x-3">
+            <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"/></svg>
+            <span>Saved Insights</span>
+          </div>
+          <span id="savedCountBadge" class="bg-slate-100 text-slate-600 font-mono text-[11px] px-2 py-0.5 rounded-full font-bold">0</span>
+        </button>
+
+        <button onclick="navigateTab('history')" id="nav-history" class="nav-btn w-full flex items-center space-x-3 px-3.5 py-2.5 rounded-xl text-left">
+          <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+          <span>Session History</span>
+        </button>
+
+        <button onclick="navigateTab('settings')" id="nav-settings" class="nav-btn w-full flex items-center space-x-3 px-3.5 py-2.5 rounded-xl text-left">
+          <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+          <span>Engine Settings</span>
+        </button>
+      </nav>
+    </div>
+
+    <!-- Active Dataset Sidebar Badge -->
+    <div class="p-4 border-t border-slate-100">
+      <div class="bg-slate-50 border border-slate-200 rounded-xl p-3">
+        <div class="flex items-center space-x-2 text-xs font-semibold text-slate-800 mb-1">
+          <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+          <span class="truncate max-w-[150px]" id="sidebarDatasetName">ecommerce_sales.csv</span>
+        </div>
+        <div class="text-[11px] font-mono text-slate-500" id="sidebarDatasetStats">12,540 rows · 14 cols</div>
+      </div>
+    </div>
+  </aside>
+
+
+  <!-- ==================================================== -->
+  <!-- MAIN WORKSPACE                                       -->
+  <!-- ==================================================== -->
+  <div class="flex-1 flex flex-col min-w-0 overflow-y-auto">
+    
+    <!-- TOP STATUS & ACTION BAR -->
+    <header class="bg-white border-b border-slate-200 px-8 py-3.5 flex items-center justify-between sticky top-0 z-20 shadow-sm">
+      <div class="flex items-center space-x-4">
+        <h1 id="topbarTitle" class="font-syne font-bold text-lg text-slate-900">Dashboard</h1>
+        <div class="hidden sm:flex items-center space-x-2 text-xs font-mono text-slate-500 bg-slate-100 px-3 py-1 rounded-full border border-slate-200">
+          <span class="text-coral-600 font-bold">ENGINE:</span>
+          <span>DuckDB (In-Memory)</span>
+          <span>·</span>
+          <span id="topbarModelPill">qwen2.5-coder:14b</span>
+        </div>
+      </div>
+
+      <!-- Quick Actions -->
+      <div class="flex items-center space-x-2.5">
+        <button onclick="document.getElementById('topFileInput').click()" class="text-xs font-semibold bg-slate-100 hover:bg-slate-200 text-slate-700 px-3.5 py-2 rounded-xl transition flex items-center space-x-1.5 border border-slate-200">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+          <span>New Dataset</span>
+        </button>
+        <input type="file" id="topFileInput" class="hidden" accept=".csv,.parquet,.xlsx,.xls">
+
+        <button onclick="loadSampleData()" class="text-xs font-semibold bg-slate-100 hover:bg-slate-200 text-slate-700 px-3.5 py-2 rounded-xl transition border border-slate-200">
+          ⚡ Load Sample
+        </button>
+
+        <button onclick="exportFullExecutiveReport()" class="text-xs font-semibold coral-gradient text-white px-4 py-2 rounded-xl transition shadow-sm hover:opacity-95 flex items-center space-x-1.5">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+          <span>Export Report</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- CONTENT WRAPPER -->
+    <main class="p-8 max-w-7xl w-full mx-auto space-y-6">
+
+      <!-- ================================================ -->
+      <!-- TAB 1: DASHBOARD MODE                            -->
+      <!-- ================================================ -->
+      <section id="tab-dashboard-view" class="space-y-6">
+        
+        <!-- Welcome Hero Banner -->
+        <div class="workspace-card p-6 bg-gradient-to-r from-slate-900 to-slate-800 text-white flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+          <div>
+            <h2 class="font-syne text-2xl font-extrabold tracking-tight uppercase">DATA SENSEI</h2>
+            <p class="text-slate-300 text-sm mt-1">Your AI Data Analysis Master</p>
+          </div>
+          <button onclick="navigateTab('copilot')" class="coral-gradient text-white text-xs font-bold px-4 py-2.5 rounded-xl shadow transition shrink-0">
+            Consult the Sensei →
+          </button>
+        </div>
+
+        <!-- 4 Top KPI Cards Grid -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5" id="dashboardKpisGrid">
+          <!-- Dynamic KPI Cards injected here -->
+        </div>
+
+        <!-- Overview Chart & Quick Questions -->
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+          <div class="lg:col-span-8 workspace-card p-6">
+            <div class="flex items-center justify-between mb-4 pb-3 border-b border-slate-100">
+              <h3 class="font-syne font-bold text-base text-slate-900" id="dashboardOverviewTitle">Primary Distribution Overview</h3>
+              <span class="text-xs font-mono text-coral-600 bg-coral-50 px-2.5 py-0.5 rounded-full font-bold">Auto Aggregated</span>
+            </div>
+            <div class="h-72 w-full flex items-center justify-center">
+              <canvas id="dashboardOverviewChart"></canvas>
+            </div>
+          </div>
+
+          <div class="lg:col-span-4 workspace-card p-6 flex flex-col justify-between">
+            <div>
+              <div class="flex items-center space-x-2 text-slate-900 font-syne font-bold text-base mb-3 pb-3 border-b border-slate-100">
+                <span class="text-coral-500">💡</span>
+                <span>Suggested Inquiries</span>
+              </div>
+              <p class="text-xs text-slate-500 mb-4 font-mono">Derived from your schema columns:</p>
+              <div class="space-y-2" id="dashboardSuggestedQuestions">
+                <!-- Suggested chips -->
+              </div>
+            </div>
+            <button onclick="navigateTab('copilot')" class="w-full mt-4 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold py-2.5 rounded-xl transition text-center">
+              Open Full AI Copilot
+            </button>
+          </div>
+        </div>
+      </section>
+
+
+      <!-- ================================================ -->
+      <!-- TAB 2: DATASET OVERVIEW & PROFILING              -->
+      <!-- ================================================ -->
+      <section id="tab-dataset-view" class="space-y-6 hidden">
+        
+        <!-- Dataset Health Stat Cards -->
+        <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4" id="datasetStatsGrid">
+          <!-- Injected stat cards -->
+        </div>
+
+        <!-- Data Quality Alert Bar -->
+        <div class="workspace-card p-4 bg-slate-900 text-slate-200 flex items-center justify-between" id="dataQualityAlerts">
+          <div class="flex items-center space-x-3 text-xs font-mono">
+            <span class="text-coral-400 font-bold">🔍 EXPLORER QUALITY AUDIT:</span>
+            <span id="qualityAlertText" class="text-slate-300">Checking data health...</span>
+          </div>
+          <button onclick="navigateTab('eda')" class="text-xs font-mono text-coral-400 hover:text-coral-300 font-bold underline">
+            View Auto EDA →
+          </button>
+        </div>
+
+        <!-- Schema Table Card -->
+        <div class="workspace-card p-6">
+          <div class="flex items-center justify-between mb-4 pb-3 border-b border-slate-100">
+            <div>
+              <h3 class="font-syne font-bold text-base text-slate-900">Schema & Column Profile</h3>
+              <p class="text-xs text-slate-500 font-mono mt-0.5">Detected data types, null percentage, unique cardinality, and sample records.</p>
+            </div>
+            <input type="text" id="schemaSearchInput" oninput="filterSchemaTable()" placeholder="Search column..." class="text-xs font-mono px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg outline-none focus:border-coral-500">
+          </div>
+
+          <div class="overflow-x-auto">
+            <table class="w-full text-left text-xs font-mono border-collapse" id="schemaFullTable">
+              <thead class="bg-slate-50 text-slate-500 border-b border-slate-200">
+                <tr>
+                  <th class="p-3">COLUMN NAME</th>
+                  <th class="p-3">DETECTED TYPE</th>
+                  <th class="p-3">NULL %</th>
+                  <th class="p-3">DISTINCT VALUES</th>
+                  <th class="p-3">SAMPLE VALUES</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-slate-100" id="schemaTableBody"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Data Preview (First 8 Rows) -->
+        <div class="workspace-card p-6">
+          <div class="flex items-center justify-between mb-4 pb-3 border-b border-slate-100">
+            <h3 class="font-syne font-bold text-base text-slate-900">Raw Data Preview (Top 8 Rows)</h3>
+            <button onclick="navigateTab('sql')" class="text-xs font-mono text-coral-600 hover:underline">Query in SQL Explorer →</button>
+          </div>
+          <div class="overflow-x-auto max-h-64 overflow-y-auto">
+            <table class="w-full text-left text-xs font-mono border-collapse" id="previewRawTable">
+              <thead class="bg-slate-50 text-slate-500 border-b border-slate-200" id="previewTableHead"></thead>
+              <tbody class="divide-y divide-slate-100" id="previewTableBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+
+      <!-- ================================================ -->
+      <!-- TAB 3: AI ANALYST COPILOT (CENTRAL WORKSPACE)    -->
+      <!-- ================================================ -->
+      <section id="tab-copilot-view" class="space-y-6 hidden">
+        
+        <!-- Live Agent Workflow Step Tracker -->
+        <div id="copilotStepTracker" class="hidden workspace-card p-4 border-l-4 border-coral-500 bg-coral-50/40 transition">
+          <div class="flex items-center justify-between font-mono text-xs text-coral-700 font-bold mb-2">
+            <span id="trackerStageTitle">⚡ MULTI-AGENT PIPELINE EXECUTING...</span>
+            <span id="trackerTimer">0.0s</span>
+          </div>
+          <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 font-mono text-[11px]" id="agentWorkflowPills">
+            <div id="p-step-1" class="bg-white p-2 rounded-lg border border-slate-200 text-slate-600">1. Explorer (Schema)</div>
+            <div id="p-step-2" class="bg-white p-2 rounded-lg border border-slate-200 text-slate-600">2. SQL Specialist</div>
+            <div id="p-step-3" class="bg-white p-2 rounded-lg border border-slate-200 text-slate-600">3. DuckDB Execution</div>
+            <div id="p-step-4" class="bg-white p-2 rounded-lg border border-slate-200 text-slate-600">4. Executive Findings</div>
+          </div>
+        </div>
+
+        <!-- Conversation History Thread of Analysis Cards -->
+        <div class="space-y-6" id="conversationThread">
+          <!-- Initial Welcome Card -->
+          <div class="workspace-card p-6 bg-slate-50 border-dashed border-2 border-slate-200 text-center py-10" id="emptyCopilotState">
+            <div class="w-14 h-14 coral-gradient text-white rounded-2xl flex items-center justify-center mx-auto mb-3 shadow text-2xl">
+              🥋
+            </div>
+            <h3 class="font-syne font-bold text-xl text-slate-900 mb-1">Sense AI</h3>
+            <div class="text-xs text-coral-600 font-bold mb-2 uppercase tracking-wider">Your AI Data Analysis Master 🥋</div>
+            <p class="text-xs text-slate-500 max-w-md mx-auto mb-4">"Ask your data. Learn its story. Make smarter decisions." — Grounded in deterministic DuckDB SQL calculations.</p>
+            <div class="flex flex-wrap justify-center gap-2" id="copilotWelcomeSuggestions">
+              <!-- Injected Dynamic Chips -->
+            </div>
+          </div>
+        </div>
+
+        <!-- Input Bar (Sticky at bottom or clean form) -->
+        <div class="workspace-card p-4 shadow-lg border-coral-200">
+          <div class="flex items-center justify-between mb-2">
+            <span class="text-xs font-mono font-bold text-slate-500 uppercase flex items-center space-x-1.5">
+              <span class="w-2 h-2 rounded-full bg-coral-500"></span>
+              <span>Ask Natural Language Question:</span>
+            </span>
+            <button onclick="clearCopilotConversation()" class="text-[11px] font-mono text-slate-400 hover:text-slate-600">
+              Clear Thread
+            </button>
+          </div>
+          
+          <div class="flex gap-2">
+            <textarea id="copilotQuestionInput" rows="2" placeholder="e.g. Which region had the highest total revenue, and what was its average discount rate?" class="flex-1 text-sm font-mono bg-slate-50 border border-slate-200 focus:border-coral-500 rounded-xl p-3 outline-none resize-none transition"></textarea>
+            <button id="copilotSubmitBtn" onclick="runCopilotQuery()" class="coral-gradient text-white font-mono text-xs font-bold px-6 rounded-xl shadow hover:opacity-95 transition flex items-center space-x-2 shrink-0">
+              <span id="copilotSubmitText">RUN</span>
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg>
+            </button>
+          </div>
+
+          <!-- Follow-up suggestion pill row -->
+          <div class="flex flex-wrap items-center gap-1.5 mt-3 pt-2 border-t border-slate-100 text-[11px] font-mono" id="copilotQuickChips">
+            <span class="text-slate-400">Suggestions:</span>
+            <!-- Injected dynamic suggestions -->
+          </div>
+        </div>
+      </section>
+
+
+      <!-- ================================================ -->
+      <!-- TAB 4: VISUALIZATIONS STUDIO                     -->
+      <!-- ================================================ -->
+      <section id="tab-visualizations-view" class="space-y-6 hidden">
+        
+        <!-- Custom Chart Builder Studio -->
+        <div class="workspace-card p-6 bg-slate-900 text-white">
+          <div class="flex items-center justify-between mb-4 pb-3 border-b border-slate-800">
+            <div>
+              <div class="text-[11px] font-mono text-coral-400 font-bold uppercase tracking-wider">[ CHART STUDIO ]</div>
+              <h3 class="font-syne font-bold text-lg text-white">Interactive Custom Visualizer</h3>
+            </div>
+            <span class="text-xs font-mono text-slate-400 bg-slate-800 px-3 py-1 rounded-full">DuckDB Computed</span>
+          </div>
+
+          <!-- Controls Grid -->
+          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 font-mono text-xs mb-4">
+            <div>
+              <label class="block text-slate-400 mb-1">X-AXIS (DIMENSION)</label>
+              <select id="vizXColSelect" class="w-full bg-slate-950 border border-slate-700 text-slate-200 p-2 rounded-xl outline-none focus:border-coral-500"></select>
+            </div>
+            <div>
+              <label class="block text-slate-400 mb-1">Y-AXIS (METRIC)</label>
+              <select id="vizYColSelect" class="w-full bg-slate-950 border border-slate-700 text-slate-200 p-2 rounded-xl outline-none focus:border-coral-500"></select>
+            </div>
+            <div>
+              <label class="block text-slate-400 mb-1">AGGREGATION</label>
+              <select id="vizAggSelect" class="w-full bg-slate-950 border border-slate-700 text-slate-200 p-2 rounded-xl outline-none focus:border-coral-500">
+                <option value="SUM">SUM (Total)</option>
+                <option value="AVG">AVG (Mean)</option>
+                <option value="COUNT">COUNT (Frequency)</option>
+                <option value="MAX">MAX (Peak)</option>
+                <option value="MIN">MIN (Floor)</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-slate-400 mb-1">CHART TYPE</label>
+              <select id="vizTypeSelect" class="w-full bg-slate-950 border border-slate-700 text-slate-200 p-2 rounded-xl outline-none focus:border-coral-500">
+                <option value="bar">Bar Chart</option>
+                <option value="line">Line Trend</option>
+                <option value="doughnut">Donut / Pie</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="flex justify-between items-center pt-2">
+            <button onclick="renderCustomStudioChart()" class="coral-gradient text-white text-xs font-bold font-mono px-5 py-2.5 rounded-xl shadow hover:opacity-95 transition">
+              ⚡ RENDER CUSTOM CHART
+            </button>
+            <div class="flex space-x-2">
+              <button onclick="downloadCustomChartPng()" class="text-xs font-mono bg-slate-800 hover:bg-slate-700 text-slate-300 px-3 py-1.5 rounded-lg transition">
+                📥 Download PNG
+              </button>
+            </div>
+          </div>
+
+          <!-- Custom Chart Canvas -->
+          <div class="mt-6 bg-slate-950/80 p-4 rounded-xl border border-slate-800 h-72 flex items-center justify-center">
+            <canvas id="customStudioChartCanvas"></canvas>
+          </div>
+        </div>
+
+        <!-- Pre-Built Multi-Dimensional Visual Gallery -->
+        <div class="flex items-center justify-between pt-2">
+          <div>
+            <h3 class="font-syne font-bold text-lg text-slate-900">Automated Visual Gallery</h3>
+            <p class="text-xs text-slate-500 font-mono">Multi-dimensional breakdowns generated automatically across primary dimensions.</p>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6" id="visualizationsGalleryGrid">
+          <!-- Injected gallery cards -->
+        </div>
+      </section>
+
+
+      <!-- ================================================ -->
+      <!-- TAB 5: AUTOMATED EDA                             -->
+      <!-- ================================================ -->
+      <section id="tab-eda-view" class="space-y-6 hidden">
+        <div class="workspace-card p-6">
+          <h3 class="font-syne font-bold text-base text-slate-900 mb-1">Numerical Statistics & Distributions</h3>
+          <p class="text-xs text-slate-500 font-mono mb-4">Mean, standard deviation, quartiles, and skewness across all quantitative columns.</p>
+          <div class="overflow-x-auto">
+            <table class="w-full text-left text-xs font-mono border-collapse" id="edaNumericTable">
+              <thead class="bg-slate-50 text-slate-500 border-b border-slate-200">
+                <tr>
+                  <th class="p-3">COLUMN</th>
+                  <th class="p-3">MEAN</th>
+                  <th class="p-3">STD</th>
+                  <th class="p-3">MIN</th>
+                  <th class="p-3">25% (Q1)</th>
+                  <th class="p-3">MEDIAN</th>
+                  <th class="p-3">75% (Q3)</th>
+                  <th class="p-3">MAX</th>
+                  <th class="p-3">SKEW</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-slate-100" id="edaNumericBody"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <!-- Categorical Distributions -->
+          <div class="workspace-card p-6">
+            <h3 class="font-syne font-bold text-base text-slate-900 mb-1">Categorical Distributions (Top Values)</h3>
+            <p class="text-xs text-slate-500 font-mono mb-4">Top 5 distinct items with count & share %.</p>
+            <div class="space-y-4 max-h-96 overflow-y-auto pr-1" id="edaCatContainer"></div>
+          </div>
+
+          <!-- Correlation Matrix -->
+          <div class="workspace-card p-6">
+            <h3 class="font-syne font-bold text-base text-slate-900 mb-1">Pearson Correlation Matrix</h3>
+            <p class="text-xs text-slate-500 font-mono mb-4">Strength of linear relationships between numerical dimensions.</p>
+            <div class="overflow-x-auto" id="edaCorrContainer"></div>
+          </div>
+        </div>
+      </section>
+
+
+      <!-- ================================================ -->
+      <!-- TAB 5: SQL EXPLORER                              -->
+      <!-- ================================================ -->
+      <section id="tab-sql-view" class="space-y-6 hidden">
+        <div class="workspace-card p-6">
+          <div class="flex items-center justify-between mb-3">
+            <div>
+              <h3 class="font-syne font-bold text-base text-slate-900">Direct DuckDB SQL Studio</h3>
+              <p class="text-xs text-slate-500 font-mono">Execute high-speed SQL queries directly against the in-memory <code class="bg-slate-100 px-1 py-0.5 rounded">dataset</code> table.</p>
+            </div>
+            <div class="flex items-center space-x-2">
+              <button onclick="setSqlSnippet('top_revenue')" class="text-xs font-mono bg-slate-100 hover:bg-slate-200 px-2.5 py-1 rounded-lg">Top 10 Group By</button>
+              <button onclick="setSqlSnippet('monthly_trend')" class="text-xs font-mono bg-slate-100 hover:bg-slate-200 px-2.5 py-1 rounded-lg">Time Series</button>
+            </div>
+          </div>
+
+          <textarea id="rawSqlEditor" rows="5" class="w-full font-mono text-xs bg-slate-900 text-sky-300 p-4 rounded-xl outline-none focus:ring-2 focus:ring-coral-500">SELECT * FROM dataset LIMIT 10;</textarea>
+
+          <div class="flex items-center justify-between mt-3">
+            <div class="text-xs font-mono text-slate-500" id="sqlStudioStatus">Ready</div>
+            <button onclick="executeRawSqlStudio()" class="coral-gradient text-white text-xs font-mono font-bold px-5 py-2.5 rounded-xl shadow hover:opacity-95 transition">
+              ▶️ EXECUTE QUERY
+            </button>
+          </div>
+        </div>
+
+        <!-- Studio Result Table & Chart -->
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6" id="sqlStudioResultsSection">
+          <div class="lg:col-span-7 workspace-card p-6">
+            <div class="flex items-center justify-between mb-3 pb-2 border-b border-slate-100">
+              <span class="font-syne font-bold text-xs uppercase tracking-wider text-slate-800">📋 SQL Result Data</span>
+              <button onclick="downloadStudioCsv()" class="text-xs font-mono text-coral-600 hover:underline">Download CSV</button>
+            </div>
+            <div class="overflow-x-auto max-h-72 overflow-y-auto">
+              <table class="w-full text-left font-mono text-xs border-collapse" id="studioTable">
+                <thead class="bg-slate-50 text-slate-500" id="studioTableHead"></thead>
+                <tbody class="divide-y divide-slate-100" id="studioTableBody"></tbody>
+              </table>
+            </div>
+          </div>
+
+          <div class="lg:col-span-5 workspace-card p-6">
+            <div class="flex items-center justify-between mb-3 pb-2 border-b border-slate-100">
+              <span class="font-syne font-bold text-xs uppercase tracking-wider text-slate-800">📊 Auto Visualizer</span>
+            </div>
+            <div class="h-64 flex items-center justify-center">
+              <canvas id="studioChartCanvas"></canvas>
+            </div>
+          </div>
+        </div>
+      </section>
+
+
+      <!-- ================================================ -->
+      <!-- TAB 6: SAVED INSIGHTS & REPORTS                  -->
+      <!-- ================================================ -->
+      <section id="tab-reports-view" class="space-y-6 hidden">
+        <div class="workspace-card p-6 flex items-center justify-between">
+          <div>
+            <h3 class="font-syne font-bold text-lg text-slate-900">Saved Analytical Insights</h3>
+            <p class="text-xs text-slate-500 font-mono mt-0.5">Collect findings from your AI Copilot questions and generate a full executive briefing.</p>
+          </div>
+          <button onclick="exportFullExecutiveReport()" class="coral-gradient text-white text-xs font-bold px-4 py-2.5 rounded-xl shadow hover:opacity-95 transition flex items-center space-x-2">
+            <span>📑 GENERATE OFFICIAL EXECUTIVE REPORT</span>
+          </button>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-5" id="savedInsightsGrid">
+          <!-- Injected saved insight cards -->
+        </div>
+      </section>
+
+
+      <!-- ================================================ -->
+      <!-- TAB 7: HISTORY                                   -->
+      <!-- ================================================ -->
+      <section id="tab-history-view" class="space-y-6 hidden">
+        <div class="workspace-card p-6">
+          <div class="flex items-center justify-between mb-4 pb-3 border-b border-slate-100">
+            <h3 class="font-syne font-bold text-base text-slate-900">Session Query History</h3>
+            <button onclick="clearAllHistory()" class="text-xs font-mono text-coral-600 hover:underline">Clear History</button>
+          </div>
+          <div class="space-y-3" id="historyTimelineList"></div>
+        </div>
+      </section>
+
+
+      <!-- ================================================ -->
+      <!-- TAB 8: SETTINGS & ENGINE CONFIG                  -->
+      <!-- ================================================ -->
+      <section id="tab-settings-view" class="space-y-6 hidden">
+        <div class="workspace-card p-6 max-w-xl">
+          <h3 class="font-syne font-bold text-lg text-slate-900 mb-4 pb-2 border-b border-slate-100">Engine & LLM Configuration</h3>
+          
+          <div class="space-y-4 font-mono text-xs">
+            <div>
+              <label class="block font-bold text-slate-700 mb-1">LLM PROVIDER</label>
+              <select id="settingsProviderSelect" onchange="onSettingsProviderChange()" class="w-full bg-slate-50 border border-slate-300 rounded-xl p-2.5 text-slate-800 outline-none focus:border-coral-500">
+                <option value="Ollama (Local)">Ollama (Local)</option>
+                <option value="OpenAI">OpenAI</option>
+                <option value="Google Gemini">Google Gemini</option>
+                <option value="Groq">Groq</option>
+                <option value="Anthropic">Anthropic</option>
+              </select>
+            </div>
+
+            <div>
+              <label class="block font-bold text-slate-700 mb-1">MODEL NAME</label>
+              <input type="text" id="settingsModelInput" value="qwen2.5-coder:14b" class="w-full bg-slate-50 border border-slate-300 rounded-xl p-2.5 text-slate-800 outline-none focus:border-coral-500">
+              <span class="text-[11px] text-slate-400 mt-1 block">Local Ollama options: qwen2.5-coder:14b, qwen2.5:7b, llama3.1</span>
+            </div>
+
+            <div id="settingsApiKeyBox" class="hidden">
+              <label class="block font-bold text-slate-700 mb-1">API KEY</label>
+              <input type="password" id="settingsApiKeyInput" placeholder="sk-..." class="w-full bg-slate-50 border border-slate-300 rounded-xl p-2.5 text-slate-800 outline-none focus:border-coral-500">
+            </div>
+
+            <button onclick="saveSettings()" class="w-full coral-gradient text-white font-bold py-3 rounded-xl shadow hover:opacity-95 transition mt-4">
+              SAVE ENGINE CONFIGURATION
+            </button>
+          </div>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <!-- Client Script -->
+  <script src="/static/app.js"></script>
+</body>
+</html>

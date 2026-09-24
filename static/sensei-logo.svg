@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" fill="none" class="w-full h-full">
+  <!-- Crescent Moon / Brush Arc -->
+  <path d="M 50 10 C 27.9 10 10 27.9 10 50 C 10 63.5 16.7 75.4 27 82.7 C 22.5 73.8 20 63.8 20 53 C 20 34.8 34.8 20 53 20 C 66.8 20 78.8 28.5 83.8 40.8 C 81.2 23.2 67.2 10 50 10 Z" fill="currentColor"/>
+  
+  <!-- Conical Hat (Kasa) -->
+  <path d="M 48 29 L 34 38 L 59 44 L 62 43 Z" fill="currentColor"/>
+  
+  <!-- Head Silhouette & Neck -->
+  <path d="M 44 38 C 44 38 49 39 52 44 C 50 46 47 48 45 45 C 43 43 44 38 44 38 Z" fill="currentColor"/>
+  
+  <!-- Robe (Kimono/Gi) Torso -->
+  <path d="M 45 45 C 41 47 38 52 38 58 C 38 65 43 72 53 76 C 54 74 57 66 56 62 C 55 58 53 54 48 49 Z" fill="currentColor"/>
+  
+  <!-- Katana (Sword) -->
+  <path d="M 68 47 L 22 83 L 24 85 L 70 49 Z" fill="currentColor"/>
+  
+  <!-- Katana Handle / Tsuba -->
+  <path d="M 57 56 L 62 61 L 63 60 L 58 55 Z" fill="currentColor"/>
+</svg>
